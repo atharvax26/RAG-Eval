@@ -9,114 +9,110 @@ echo   RAG Eval Studio  ^|  Starting up...
 echo  ============================================
 echo.
 
-:: ── 1. Check Docker Desktop is running ──────────────────────────────────────
-echo [1/5] Checking Docker...
-docker info >nul 2>&1
-if errorlevel 1 (
-    echo  Docker Desktop is not running. Searching for it...
-
-    :: Try common install locations in order
-    set "DOCKER_EXE="
-    if exist "%ProgramFiles%\Docker\Docker\Docker Desktop.exe"       set "DOCKER_EXE=%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
-    if exist "%LocalAppData%\Programs\Docker\Docker\Docker Desktop.exe" set "DOCKER_EXE=%LocalAppData%\Programs\Docker\Docker\Docker Desktop.exe"
-    if exist "%ProgramFiles(x86)%\Docker\Docker\Docker Desktop.exe"  set "DOCKER_EXE=%ProgramFiles(x86)%\Docker\Docker\Docker Desktop.exe"
-
-    if defined DOCKER_EXE (
-        echo  Found Docker Desktop at: !DOCKER_EXE!
-        start "" "!DOCKER_EXE!"
-    ) else (
-        echo  Could not find Docker Desktop automatically.
-        echo  Attempting to launch via Start Menu shortcut...
-        powershell -WindowStyle Hidden -Command "Start-Process 'Docker Desktop'" >nul 2>&1
-    )
-
-    echo  Waiting 35 seconds for Docker engine to start...
-    timeout /t 35 /nobreak >nul
-    docker info >nul 2>&1
-    if errorlevel 1 (
-        echo.
-        echo  ERROR: Docker Desktop did not start in time.
-        echo  Please start Docker Desktop manually, wait for it to show
-        echo  "Engine running" in the taskbar, then re-run this file.
-        pause
-        exit /b 1
-    )
-)
-echo  Docker is running.
-echo.
-
-:: ── 2. Start backend services (postgres + qdrant + backend) via Docker ───────
-echo [2/5] Starting backend services (PostgreSQL + Qdrant + FastAPI)...
-docker-compose up -d db qdrant backend
+:: ── 1. Check Node.js is installed ───────────────────────────────────────────
+echo [1/4] Checking Node.js...
+node --version >nul 2>&1
 if errorlevel 1 (
     echo.
-    echo  ERROR: docker-compose failed. Check docker-compose.yml and try again.
+    echo  ERROR: Node.js is not installed or not in PATH.
+    echo  Download it from https://nodejs.org and re-run this file.
     pause
     exit /b 1
 )
-echo  Backend services started.
+for /f "tokens=*" %%v in ('node --version') do echo  Node.js %%v found.
 echo.
 
-:: ── 3. Frontend — npm install if node_modules is missing ────────────────────
-echo [3/5] Setting up frontend...
-if not exist "frontend\node_modules" (
-    echo  node_modules not found — running npm install (first time only)...
-    pushd frontend
+:: ── 2. Docker check (optional — skip if not installed) ──────────────────────
+echo [2/4] Checking Docker (optional for UI preview)...
+docker info >nul 2>&1
+if errorlevel 1 (
+    echo  Docker not available — running in FRONTEND-ONLY mode.
+    echo  The UI will load. API calls will show errors (expected without backend).
+) else (
+    echo  Docker is running — starting backend services...
+    docker-compose up -d db qdrant backend >nul 2>&1
+    if errorlevel 1 (
+        echo  Backend services could not start — continuing in frontend-only mode.
+    ) else (
+        echo  Backend services started (PostgreSQL + Qdrant + FastAPI).
+    )
+)
+echo.
+
+:: ── 3. npm install if node_modules missing ──────────────────────────────────
+echo [3/4] Setting up frontend...
+cd /d "%~dp0frontend"
+if not exist "node_modules" (
+    echo  Installing npm packages (first time only, may take 1-2 minutes)...
     call npm install
     if errorlevel 1 (
-        echo  ERROR: npm install failed. Make sure Node.js is installed.
-        popd
+        echo.
+        echo  ERROR: npm install failed.
         pause
         exit /b 1
     )
-    popd
     echo  npm install complete.
 ) else (
-    echo  node_modules found — skipping install.
+    echo  Dependencies already installed.
 )
 echo.
 
-:: ── 4. Launch frontend dev server in a new terminal window ─────────────────
-echo [4/5] Launching Vite dev server on http://localhost:3000 ...
-start "RAG Eval — Frontend Dev Server" cmd /k "cd /d "%~dp0frontend" && npm run dev"
-echo  Frontend dev server window opened.
-echo.
+:: ── 4. Start Vite dev server and open browser ───────────────────────────────
+echo [4/4] Starting frontend dev server...
 
-:: ── 5. Wait for the frontend to be ready, then open Chrome ─────────────────
-echo [5/5] Waiting for frontend to be ready...
+:: Launch the dev server in a new window and capture its PID
+start "RAG Eval — Frontend Dev Server" cmd /k "cd /d "%~dp0frontend" && npm run dev"
+
+:: Wait for port 5173 or 3000 to respond (Vite defaults to 5173)
+echo  Waiting for dev server to be ready...
 set RETRIES=0
+set PORT=5173
+
 :WAIT_LOOP
 timeout /t 2 /nobreak >nul
-curl -s -o nul -w "%%{http_code}" http://localhost:3000 | findstr "200" >nul 2>&1
-if errorlevel 1 (
-    set /a RETRIES+=1
-    if !RETRIES! lss 20 (
-        echo  Still waiting... (!RETRIES!/20^)
-        goto WAIT_LOOP
-    )
-    echo  Timed out waiting for frontend — opening Chrome anyway...
+curl -s --max-time 2 http://localhost:!PORT! >nul 2>&1
+if not errorlevel 1 goto OPEN_BROWSER
+
+:: Also try port 3000 (set in vite.config.ts)
+curl -s --max-time 2 http://localhost:3000 >nul 2>&1
+if not errorlevel 1 (
+    set PORT=3000
+    goto OPEN_BROWSER
 )
 
-echo  Opening Chrome...
-start "" "chrome.exe" "http://localhost:3000"
-if errorlevel 1 (
-    :: Fallback: try the full path for Chrome
-    start "" "C:\Program Files\Google\Chrome\Application\chrome.exe" "http://localhost:3000"
-    if errorlevel 1 (
-        :: Last fallback: open with default browser
-        start "" "http://localhost:3000"
-    )
+set /a RETRIES+=1
+if !RETRIES! lss 25 (
+    echo  Still waiting... (!RETRIES!/25^)
+    goto WAIT_LOOP
 )
+echo  Dev server taking longer than expected — opening browser anyway...
+set PORT=3000
 
+:OPEN_BROWSER
+echo  Opening Chrome at http://localhost:!PORT! ...
 echo.
+
+:: Try chrome in PATH first, then known install locations, then default browser
+where chrome >nul 2>&1 && (start "" chrome "http://localhost:!PORT!" & goto DONE)
+if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" (
+    start "" "%ProgramFiles%\Google\Chrome\Application\chrome.exe" "http://localhost:!PORT!"
+    goto DONE
+)
+if exist "%LocalAppData%\Google\Chrome\Application\chrome.exe" (
+    start "" "%LocalAppData%\Google\Chrome\Application\chrome.exe" "http://localhost:!PORT!"
+    goto DONE
+)
+:: Last resort: default browser
+start "" "http://localhost:!PORT!"
+
+:DONE
 echo  ============================================
-echo   All systems go!
+echo   RAG Eval Studio is running!
 echo.
-echo   Frontend  : http://localhost:3000
-echo   Backend   : http://localhost:8000/docs
-echo   Qdrant UI : http://localhost:6333/dashboard
+echo   App  :  http://localhost:!PORT!
+if not "!PORT!"=="3000" echo   Also :  http://localhost:3000
 echo.
-echo   To stop everything, run:  stop_app.bat
+echo   Close the "Frontend Dev Server" window to stop.
 echo  ============================================
 echo.
 pause
