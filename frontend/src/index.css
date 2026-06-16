@@ -1,0 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg:      #0C0C0C;
+  --card:    #161616;
+  --card2:   #1E1E1E;
+  --teal:    #00E5C4;
+  --teal2:   #00B8A0;
+  --border:  #2E2E2E;
+  --lgray:   #D0D0D0;
+  --mgray:   #808080;
+  --amber:   #F5A623;
+}
+
+body {
+  background: var(--bg);
+  color: var(--lgray);
+  font-family: 'Inter', sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--card); }
+::-webkit-scrollbar-thumb { background: #2E2E2E; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--teal2); }
+
+/* Recharts dark overrides */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line { stroke: #1E1E1E; }
+.recharts-text { fill: var(--mgray); font-size: 11px; }
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--card2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 4px !important;
+  color: var(--lgray) !important;
+}

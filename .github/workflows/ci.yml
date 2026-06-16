@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_DB: rageval_test, POSTGRES_PASSWORD: test123 }
+        options: --health-cmd 'pg_isready' --health-interval 5s
+      qdrant:
+        image: qdrant/qdrant:v1.9.2
+        ports: ['6333:6333']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install -r backend/requirements.txt
+      - run: pytest backend/tests/ -v
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:test123@localhost:5432/rageval_test
+          QDRANT_HOST: localhost
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SCALEDOWN_API_KEY: ${{ secrets.SCALEDOWN_API_KEY }}
+
+  frontend-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '18' }
+      - run: cd frontend && npm ci && npm run typecheck
+
+  deploy:
+    needs: [backend-test, frontend-typecheck]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Railway
+        run: |
+          npm install -g @railway/cli
+          railway up --service backend
+        env: { RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }} }
