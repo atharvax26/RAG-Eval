@@ -1,0 +1,124 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# Environment variables / secrets
+.env
+.env.*
+*.env
+!.env.example
+
+# API keys
+secrets.yaml
+secrets.json
+config/secrets/
+
+# Jupyter / IPython
+.ipynb_checkpoints/
+*.ipynb
+profile_default/
+ipython_config.py
+
+# Data files
+data/raw/
+data/processed/
+*.csv
+*.parquet
+*.feather
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.npy
+*.npz
+*.jsonl
+
+# Model files & embeddings
+*.bin
+*.pt
+*.pth
+*.onnx
+*.safetensors
+models/
+
+# Qdrant local storage
+qdrant_storage/
+qdrant_data/
+
+# PostgreSQL local data
+postgres_data/
+pgdata/
+
+# Docker
+.docker/
+
+# Logs
+logs/
+*.log
+*.out
+
+# Coverage & test artifacts
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+dist/
+.next/
+out/
+.cache/
+*.tsbuildinfo
+
+# Build output
+frontend/dist/
+frontend/build/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Evaluation run artifacts
+runs/
+eval_results/
+benchmark_exports/
+*.ragas_cache
+
+# Railway / deployment
+.railway/
