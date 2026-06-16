@@ -13,15 +13,31 @@ echo.
 echo [1/5] Checking Docker...
 docker info >nul 2>&1
 if errorlevel 1 (
-    echo  Docker Desktop is not running. Launching it now...
-    start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
-    echo  Waiting 30 seconds for Docker to start...
-    timeout /t 30 /nobreak >nul
+    echo  Docker Desktop is not running. Searching for it...
+
+    :: Try common install locations in order
+    set "DOCKER_EXE="
+    if exist "%ProgramFiles%\Docker\Docker\Docker Desktop.exe"       set "DOCKER_EXE=%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
+    if exist "%LocalAppData%\Programs\Docker\Docker\Docker Desktop.exe" set "DOCKER_EXE=%LocalAppData%\Programs\Docker\Docker\Docker Desktop.exe"
+    if exist "%ProgramFiles(x86)%\Docker\Docker\Docker Desktop.exe"  set "DOCKER_EXE=%ProgramFiles(x86)%\Docker\Docker\Docker Desktop.exe"
+
+    if defined DOCKER_EXE (
+        echo  Found Docker Desktop at: !DOCKER_EXE!
+        start "" "!DOCKER_EXE!"
+    ) else (
+        echo  Could not find Docker Desktop automatically.
+        echo  Attempting to launch via Start Menu shortcut...
+        powershell -WindowStyle Hidden -Command "Start-Process 'Docker Desktop'" >nul 2>&1
+    )
+
+    echo  Waiting 35 seconds for Docker engine to start...
+    timeout /t 35 /nobreak >nul
     docker info >nul 2>&1
     if errorlevel 1 (
         echo.
         echo  ERROR: Docker Desktop did not start in time.
-        echo  Please start Docker Desktop manually and re-run this file.
+        echo  Please start Docker Desktop manually, wait for it to show
+        echo  "Engine running" in the taskbar, then re-run this file.
         pause
         exit /b 1
     )
