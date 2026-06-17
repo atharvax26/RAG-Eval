@@ -56,7 +56,7 @@ export default function Progress() {
     }
   }, [corpusId])
 
-  const statuses = status?.strategy_statuses ?? {}
+  const statuses: Record<string, string> = status?.strategy_statuses ?? {}
   const allReady = Object.values(statuses).length > 0 && Object.values(statuses).every((s) => s === 'ready')
 
   return (

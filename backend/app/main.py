@@ -22,4 +22,25 @@ app.include_router(explorer.router, prefix="/api")
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "db": "connected", "qdrant": "connected"}
+    # Check DB
+    db_status = "disconnected"
+    try:
+        from app.database import AsyncSessionLocal
+        from sqlalchemy import text
+        async with AsyncSessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception:
+        pass
+
+    # Check Qdrant
+    qdrant_status = "disconnected"
+    try:
+        from qdrant_client import AsyncQdrantClient
+        client = AsyncQdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
+        await client.get_collections()
+        qdrant_status = "connected"
+    except Exception:
+        pass
+
+    return {"status": "ok", "db": db_status, "qdrant": qdrant_status}
